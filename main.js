@@ -4,6 +4,8 @@ const Express = require("express")
 const app = Express()
 const port = 8000
 const cors = require("cors")
+const sequelize = require("./db")
+const Joi = require("joi")
 
 const notes = [
     {
@@ -22,19 +24,50 @@ app.use(cors())
 
 
 
-app.get('/api/note', (req,res) => {
+app.get('/api/note', async (req,res) => {
+    const notes = await sequelize.Note.findAll()
+    
     res.json(notes)
 })
 
-app.post('/api/note', (req,res) => {
-    notes.push(req.body)
-    res.json(req.body)
+app.post('/api/note', async (req,res) => {
+
+    const schema = Joi.object({
+        text: Joi.string().required(),
+        user : Joi.string().required(),
+        latitude: Joi.number().required(),
+        longitude: Joi.number().required()
+    })
+
+    let body; 
+
+    try {
+        body = await schema.validateAsync(req.body)
+    } catch (e){
+        return res.status(406).json({
+            message: e
+        })
+    }
+    console.log(body)
+
+    const newNote = await sequelize.Note.create(body)
+
+
+    res.json(newNote)
 })
 
 
 
 
 
-app.listen(port, () => {
+app.listen(port, async () => {
+
+    try {
+        await sequelize.sequelize.authenticate();
+        console.log('Connection has been established successfully.');
+    } catch (error) {
+        console.error('Unable to connect to the database:', error);
+    }
+
       console.log(`Example app listening on port ${port}`)
 })
